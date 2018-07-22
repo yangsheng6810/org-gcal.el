@@ -501,20 +501,25 @@ TO.  Instead an empty string is returned."
 (defun org-gcal--post-event (start end smry loc desc &optional id)
   (let ((method (if id "PATCH" "POST"))
         (id (or id "")))
-    (oauth2-url-retrieve
-     (org-gcal-auth)
-     (concat (format org-gcal-events-url (org-gcal--get-calendar-id-of-buffer)) "/" id)
-     (lambda (status) (org-gcal-fetch))
-     nil
-     method
-     (encode-coding-string
-      (json-encode `(,(org-gcal-start-date start)
-                     ,(org-gcal-end-date end)
-                     ("summary" . ,smry)
-                     ("location" . ,loc)
-                     ("description" . ,desc)))
-      'utf-8)
-     '(("Content-Type" . "application/json")))))
+    (org-gcal--post-event-internal
+     start end smry loc desc method
+     (concat (format org-gcal-events-url (org-gcal--get-calendar-id-of-buffer)) "/" id))))
+
+(defun org-gcal--post-event-internal (start end smry loc desc method url)
+  (oauth2-url-retrieve
+   (org-gcal-auth)
+   url
+   (lambda (status) (org-gcal-fetch))
+   nil
+   method
+   (encode-coding-string
+    (json-encode `(,(org-gcal-start-date start)
+                   ,(org-gcal-end-date end)
+                   ("summary" . ,smry)
+                   ("location" . ,loc)
+                   ("description" . ,desc)))
+    'utf-8)
+   '(("Content-Type" . "application/json"))))
 
 (defun org-gcal--delete-event (event-id)
   "EVENT-ID is nice."
