@@ -130,9 +130,14 @@ Predicate functions take an event, and if they return nil the
 
 (defun rgc-cb (b cal skip-export)
   (interactive)
-  (search-forward "\n\n")
   (let ((json-object-type 'plist))
     (org-gcal--sync cal (json-read) skip-export)))
+
+(defun rgc-cb-sync (b cal skip-export)
+  (interactive)
+  (with-current-buffer b
+    (let ((json-object-type 'plist))
+     (org-gcal--sync cal (json-read) skip-export))))
 
 ;;;###autoload
 (defun org-gcal-sync (&optional skip-export)
@@ -147,15 +152,18 @@ to non-nil to inhibit notifications."
           (find-file-noselect (cdr i))
         (org-gcal--archive-old-event))))
   (dolist (cal org-gcal-file-alist)
-    (let ((b (oauth2-url-retrieve
-              (org-gcal-auth)
-              (format "%s?%s"
-                      (format org-gcal-events-url (first cal))
-                      (format "singleEvents=True&orderBy=startTime&timeMin=%s&timeMax=%s"
-                              (org-gcal--subtract-time)
-                              (org-gcal--add-time)))
-              'rgc-cb
-              (list cal skip-export)))))))
+    (make-thread (lambda ()
+                   (let ((b (oauth2-url-retrieve-synchronously
+                             (org-gcal-auth)
+                             (format "%s?%s"
+                                     (format org-gcal-events-url (first cal))
+                                     (format "singleEvents=True&orderBy=startTime&timeMin=%s&timeMax=%s"
+                                             (org-gcal--subtract-time)
+                                             (org-gcal--add-time)))
+                             ;; 'rgc-cb
+                             ;; (list cal skip-export)
+                             )))
+                     (rgc-cb-sync b cal skip-export))))))
 
 (defun org-gcal--sync (x data &optional skip-export)
   "An X. Also data."
