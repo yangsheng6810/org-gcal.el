@@ -194,7 +194,7 @@ to non-nil to inhibit notifications."
                                                    (plist-get (read (buffer-string)) (intern (concat ":" (car x))))))))))
                  do
                  (goto-char pos)
-                 (org-gcal-post-at-point t)
+                 (org-gcal-post-at-point)
                  finally
                  (kill-buffer buf))
         (sit-for 2)
@@ -308,7 +308,7 @@ current calendar."
                                                   (plist-get (cadr elem) :contents-begin)
                                                   (plist-get (cadr elem) :contents-end)))))
                    "")))
-      (org-gcal--post-event start end smry loc desc id nil skip-import))))
+      (org-gcal--post-event start end smry loc desc id))))
 
 ;;;###autoload
 (defun org-gcal-delete-at-point ()
@@ -547,7 +547,7 @@ TO.  Instead an empty string is returned."
   "EVENT-ID is nice."
   (interactive)
   (oauth2-url-retrieve
-   (rgc-auth)
+   (org-gcal-auth)
    (format "%s/%s"
            (format org-gcal-events-url
                    (org-gcal--get-calendar-id-of-buffer))
