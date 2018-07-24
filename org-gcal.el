@@ -106,7 +106,19 @@ Predicate functions take an event, and if they return nil the
   :group 'org-gcal
   :type 'boolean)
 
-(defvar org-gcal-header-alist ())
+(defcustom org-gcal-header-alist ()
+  "\
+Association list of '(calendar-id header). For each calendar-id present in this
+list, the associated header will be inserted at the top of the file associated
+with the calendar-id in org-gcal-file-alist, before any calendar entries.
+
+This is intended to set headers in the org-mode files maintained by org-gcal to
+control categories, archive locations, and other local variables."
+  :group 'org-gcal
+  :type '(alist :key-type (string :tag "Calendar Id") :value-type (string :tag "Header")))
+
+(defvar org-gcal-token-plist nil
+  "Token plist.")
 
 (defconst org-gcal-auth-url "https://accounts.google.com/o/oauth2/auth"
   "Google OAuth2 server URL.")
@@ -232,7 +244,7 @@ filter returns NIL, discard the item."
   (let ((buf (find-file-noselect file)))
     (with-current-buffer buf
       (org-element-map (org-element-parse-buffer) 'headline
-                              (lambda (hl) (org-element-property :begin hl))))))
+        (lambda (hl) (org-element-property :begin hl))))))
 
 (defun org-gcal--parse-id (file)
   "Return a list of conses (ID . entry) of file FILE."
@@ -247,8 +259,9 @@ filter returns NIL, discard the item."
                                    (org-element-property :ID hl)))
                                (buffer-substring-no-properties
                                 pos
-                                (car (org-element-map (org-element-at-point) 'headline
-                                  (lambda (hl) (org-element-property :end hl)))))))))))
+                                (car
+                                 (org-element-map (org-element-at-point) 'headline
+                                   (lambda (hl) (org-element-property :end hl)))))))))))
 
 ;;;###autoload
 (defun org-gcal-post-at-point ()
@@ -265,8 +278,8 @@ current calendar."
                         (goto-char (match-beginning 0))
                         (org-element-timestamp-parser)))
            (smry (org-element-property :title elem))
-           (loc  (org-element-property :LOCATION elem))
-           (id  (org-element-property :ID elem))
+           (loc (org-element-property :LOCATION elem))
+           (id (org-element-property :ID elem))
            (start (org-gcal--format-org2iso
                    (plist-get (cadr tobj) :year-start)
                    (plist-get (cadr tobj) :month-start)
@@ -283,16 +296,19 @@ current calendar."
                  (plist-get (cadr tobj) :minute-end)
                  (when (plist-get (cadr tobj) :hour-start)
                    t)))
-           (desc  (if (plist-get (cadr elem) :contents-begin)
-                      (replace-regexp-in-string "^✱" "*"
-			       (replace-regexp-in-string
-				"\\`\\(?: *<[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].*?>$\\)\n?\n?" ""
-				(replace-regexp-in-string
-				 " *:PROPERTIES:\n  \\(.*\\(?:\n.*\\)*?\\) :END:\n\n" ""
-				 (buffer-substring-no-properties
-				  (plist-get (cadr elem) :contents-begin)
-				  (plist-get (cadr elem) :contents-end))))) "")))
-      (org-gcal--post-event start end smry loc desc id))))
+           (desc (if (plist-get (cadr elem) :contents-begin)
+                     (replace-regexp-in-string "^✱" "*"
+                                               (replace-regexp-in-string
+                                                "\\`\\(?: *<[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].*?>$\\)\n?\n?"
+                                                ""
+                                                (replace-regexp-in-string
+                                                 " *:PROPERTIES:\n  \\(.*\\(?:\n.*\\)*?\\) :END:\n\n"
+                                                 ""
+                                                 (buffer-substring-no-properties
+                                                  (plist-get (cadr elem) :contents-begin)
+                                                  (plist-get (cadr elem) :contents-end)))))
+                   "")))
+      (org-gcal--post-event start end smry loc desc id nil skip-import))))
 
 ;;;###autoload
 (defun org-gcal-delete-at-point ()
@@ -404,17 +420,15 @@ TO.  Instead an empty string is returned."
 
 (defun org-gcal--format-org2iso (year mon day &optional hour min tz)
   (let ((seconds (time-to-seconds (encode-time 0
-                                               (if min min 0)
-                                               (if hour hour 0)
+                                               (or min 0)
+                                               (or hour 0)
                                                day mon year))))
-    (concat
-     (format-time-string
-      (if (or hour min) "%Y-%m-%dT%H:%M" "%Y-%m-%d")
-      (seconds-to-time
-       (-
-        seconds
-        (if tz (car (org-gcal--time-zone seconds)) 0))))
-     (when (or hour min) ":00Z"))))
+    (format-time-string
+     (if (or hour min) "%Y-%m-%dT%H:%M:00Z" "%Y-%m-%d")
+     (seconds-to-time
+      (-
+       seconds
+       (if tz (car (org-gcal--time-zone seconds)) 0))))))
 
 (defun org-gcal--iso-next-day (str &optional previous-p)
   (let ((format (if (< 11 (length str))
@@ -474,9 +488,9 @@ TO.  Instead an empty string is returned."
                   (if (< 11 (length end))
                       end
                     (org-gcal--iso-previous-day end)))))) "\n"
-		    (when desc "\n")
-		    (when desc (replace-regexp-in-string "^\*" "✱" desc))
-		    (when desc (if (string= "\n" (org-gcal--safe-substring desc -1)) "" "\n")))))
+     (when desc "\n")
+     (when desc (replace-regexp-in-string "^\*" "✱" desc))
+     (when desc (if (string= "\n" (org-gcal--safe-substring desc -1)) "" "\n")))))
 
 (defun org-gcal--format-date (str format &optional tz)
   (let* ((plst (org-gcal--parse-date str))
@@ -541,7 +555,6 @@ TO.  Instead an empty string is returned."
    (lambda (status) (org-gcal-fetch))
    nil
    "DELETE"))
-
 
 (defun org-gcal--capture-post ()
   (dolist (i org-gcal-file-alist)
