@@ -164,18 +164,17 @@ to non-nil to inhibit notifications."
         (org-gcal--archive-old-event))))
   (let ((token (org-gcal-auth)))
     (dolist (cal org-gcal-file-alist)
-      (make-thread (lambda ()
-                     (let ((b (oauth2-url-retrieve-synchronously
-                               token
-                               (format "%s?%s"
-                                       (format org-gcal-events-url (first cal))
-                                       (format "singleEvents=True&orderBy=startTime&timeMin=%s&timeMax=%s"
-                                               (org-gcal--subtract-time)
-                                               (org-gcal--add-time)))
-                               ;; 'rgc-cb
-                               ;; (list cal skip-export)
-                               )))
-                       (rgc-cb-sync b cal skip-export)))))))
+      (let ((b (oauth2-url-retrieve-synchronously
+                token
+                (format "%s?%s"
+                        (format org-gcal-events-url (first cal))
+                        (format "singleEvents=True&orderBy=startTime&timeMin=%s&timeMax=%s"
+                                (org-gcal--subtract-time)
+                                (org-gcal--add-time)))
+                ;; 'rgc-cb
+                ;; (list cal skip-export)
+                )))
+        (rgc-cb-sync b cal skip-export)))))
 
 (defun org-gcal--sync (x data &optional skip-export)
   "An X. Also data."
