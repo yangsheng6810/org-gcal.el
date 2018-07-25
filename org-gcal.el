@@ -313,7 +313,6 @@ current calendar."
 (defun org-gcal-delete-at-point ()
   "Delete entry at point to current calendar."
   (interactive)
-  (org-gcal--ensure-token)
   (save-excursion
     (end-of-line)
     (org-back-to-heading)
