@@ -154,8 +154,7 @@ control categories, archive locations, and other local variables."
 ;;;###autoload
 (defun org-gcal-sync (&optional skip-export)
   "Import events from calendars.
-Export the ones to the calendar unless SKIP-EXPORT.  Set SILENT
-to non-nil to inhibit notifications."
+Export the ones to the calendar unless SKIP-EXPORT."
   (interactive)
   (when org-gcal-auto-archive
     (dolist (i org-gcal-file-alist)
@@ -541,7 +540,7 @@ TO.  Instead an empty string is returned."
    '(("Content-Type" . "application/json"))))
 
 (defun org-gcal--delete-event (event-id)
-  "EVENT-ID is nice."
+  "Delete event EVENT-ID."
   (interactive)
   (oauth2-url-retrieve
    (org-gcal-auth)
