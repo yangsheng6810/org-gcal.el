@@ -5,7 +5,7 @@
 ;; Version: 0.3
 ;; Maintainer: Raimon Grau <raimonster@gmail.com>
 ;; Copyright (C) :2014 myuhe all rights reserved.
-;; Package-Requires: ((alert "1.1") (emacs "24") (cl-lib "0.5") (org "8.2.4"))
+;; Package-Requires: ((alert "1.1") (oauth2 "0.11") (emacs "24") (cl-lib "0.5") (org "8.2.4"))
 ;; Keywords: convenience,
 
 ;; This program is free software; you can redistribute it and/or modify
