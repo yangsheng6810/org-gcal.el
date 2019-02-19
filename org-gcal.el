@@ -328,7 +328,7 @@ current calendar."
                    (plist-get (cadr tobj) :hour-start)
                    (plist-get (cadr tobj) :minute-start)
                    (when (plist-get (cadr tobj) :hour-start)
-                     t)))
+                     org-gcal-local-time-zone)))
            (end (org-gcal--format-org2iso
                  (plist-get (cadr tobj) :year-end)
                  (plist-get (cadr tobj) :month-end)
@@ -336,7 +336,7 @@ current calendar."
                  (plist-get (cadr tobj) :hour-end)
                  (plist-get (cadr tobj) :minute-end)
                  (when (plist-get (cadr tobj) :hour-start)
-                   t)))
+                   org-gcal-local-time-zone)))
            (desc (if (plist-get (cadr elem) :contents-begin)
                      (replace-regexp-in-string "^✱" "*"
                                                (replace-regexp-in-string
@@ -557,19 +557,25 @@ TO.  Instead an empty string is returned."
 (defun org-gcal--subtract-time ()
   (org-gcal--adjust-date 'time-subtract org-gcal-up-days))
 
-(defun org-gcal--time-zone (seconds)
-  (current-time-zone (seconds-to-time seconds)))
+(defun org-gcal--time-zone (seconds &optional tz)
+  (current-time-zone (seconds-to-time seconds) tz))
 
 (defun org-gcal--format-iso2org (str &optional tz)
   (let* ((plst (org-gcal--parse-date str))
          (seconds (org-gcal--time-to-seconds plst)))
+    (message "seconds = %s" seconds)
     (concat
      "<"
-     (format-time-string
-      (if (< 11 (length str)) "%Y-%m-%d %a %H:%M" "%Y-%m-%d %a")
-      (seconds-to-time
-       (+ (if tz (car (org-gcal--time-zone seconds)) 0)
-          seconds)))
+     (if (< 11 (length str))
+         (format-time-string "%Y-%m-%d %a %H:%M"
+                             (seconds-to-time
+                              (+ seconds
+                                 (car (org-gcal--time-zone seconds tz))
+                                 (- (car (org-gcal--time-zone
+                                          seconds
+                                          org-gcal-local-time-zone))))))
+       (format-time-string "%Y-%m-%d %a"
+                           (seconds-to-time (+ seconds))))
      ;;(if (and repeat (not (string= repeat ""))) (concat " " repeat) "")
      ">")))
 
@@ -577,13 +583,12 @@ TO.  Instead an empty string is returned."
   (let ((seconds (time-to-seconds (encode-time 0
                                                (or min 0)
                                                (or hour 0)
-                                               day mon year))))
-    (format-time-string
-     (if (or hour min) "%Y-%m-%dT%H:%M:00Z" "%Y-%m-%d")
-     (seconds-to-time
-      (-
-       seconds
-       (if tz (car (org-gcal--time-zone seconds)) 0))))))
+                                               day mon year tz))))
+    (if (or hour min)
+        (format-time-string
+         "%Y-%m-%dT%H:%M:00Z"
+         (- seconds (car (org-gcal--time-zone seconds tz))))
+      (format-time-string "%Y-%m-%d" seconds))))
 
 (defun org-gcal--iso-next-day (str &optional previous-p)
   (let ((format (if (< 11 (length str))
@@ -610,6 +615,10 @@ TO.  Instead an empty string is returned."
                            :dateTime))
          (etime (plist-get (plist-get plst :end)
                            :dateTime))
+         (stz   (plist-get (plist-get plst :start)
+                           :timeZone))
+         (etz   (plist-get (plist-get plst :end)
+                           :timeZone))
          (sday  (plist-get (plist-get plst :start)
                            :date))
          (eday  (plist-get (plist-get plst :end)
@@ -634,9 +643,9 @@ TO.  Instead an empty string is returned."
             (= (plist-get (org-gcal--parse-date start) :day)
                (plist-get (org-gcal--parse-date end)   :day)))
            (concat "\n  <"
-                   (org-gcal--format-date start "%Y-%m-%d %a %H:%M")
+                   (org-gcal--format-date start "%Y-%m-%d %a %H:%M" stz)
                    "-"
-                   (org-gcal--format-date end "%H:%M")
+                   (org-gcal--format-date end "%H:%M" etz)
                    ">")
          (concat "\n  " (org-gcal--format-iso2org start)
                  "--"
