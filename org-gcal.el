@@ -663,7 +663,7 @@ TO.  Instead an empty string is returned."
     (concat
      (format-time-string format
                          (seconds-to-time
-                          (+ (if tz (car (org-gcal--time-zone seconds)) 0)
+                          (+ (if tz (car (org-gcal--time-zone seconds tz)) 0)
                              seconds))))))
 
 (defun org-gcal--param-date (str)
